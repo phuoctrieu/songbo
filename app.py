@@ -188,13 +188,17 @@ def main():
                     st.markdown(analysis)
                     
         with tab3:
+            # URL của thiết bị giám sát, cần được cập nhật mỗi khi ngrok restart
+            ngrok_url = "https://943f-27-78-22-92.ngrok-free.app"  # Thay thế bằng URL ngrok hiện tại của bạn
+
             try:
                 # Kiểm tra kết nối
-                response = requests.get('https://943f-27-78-22-92.ngrok-free.app', 
+                response = requests.get(ngrok_url, 
                                       headers={'ngrok-skip-browser-warning': 'true'},
                                       timeout=10)
                 if response.status_code == 200:
-                    st.markdown(f'<iframe src="https://943f-27-78-22-92.ngrok-free.app" width="100%" height="800" frameborder="0"></iframe>', 
+                    # Nhúng iframe với URL ngrok
+                    st.markdown(f'<iframe src="{ngrok_url}" width="100%" height="800" frameborder="0"></iframe>', 
                                unsafe_allow_html=True)
                 else:
                     st.error("Không thể kết nối đến thiết bị")
