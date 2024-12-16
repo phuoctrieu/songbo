@@ -191,10 +191,9 @@ def main():
             ngrok_url = "https://943f-27-78-22-92.ngrok-free.app"
 
             try:
-                # Thêm nhiều headers hơn để hỗ trợ cả mobile
                 headers = {
                     'ngrok-skip-browser-warning': 'true',
-                    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1',
+                    'User-Agent': 'Mozilla/5.0',
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
                     'Accept-Language': 'en-US,en;q=0.5',
                     'Connection': 'keep-alive',
@@ -204,34 +203,20 @@ def main():
                 response = requests.get(ngrok_url, headers=headers, timeout=10)
                 
                 if response.status_code == 200:
-                    # Thêm meta viewport và CSS để tối ưu cho mobile
-                    st.markdown(f'''
-                        <style>
-                            .iframe-container {{
-                                position: relative;
-                                width: 100%;
-                                overflow: hidden;
-                                padding-top: 100%; /* Tỷ lệ 1:1 */
-                            }}
-                            .responsive-iframe {{
-                                position: absolute;
-                                top: 0;
-                                left: 0;
-                                width: 100%;
-                                height: 100%;
-                                border: 0;
-                            }}
-                        </style>
-                        <div class="iframe-container">
-                            <iframe 
-                                class="responsive-iframe"
-                                src="{ngrok_url}?ngrok-skip-browser-warning=true"
-                                allow="autoplay; fullscreen; picture-in-picture"
-                                allowfullscreen
-                                sandbox="allow-forms allow-scripts allow-same-origin"
-                            ></iframe>
-                        </div>
-                    ''', unsafe_allow_html=True)
+                    components.html(
+                        f'''
+                        <iframe 
+                            src="{ngrok_url}?ngrok-skip-browser-warning=true"
+                            width="100%"
+                            style="border: none;"
+                            allow="autoplay; fullscreen; picture-in-picture"
+                            allowfullscreen
+                            sandbox="allow-forms allow-scripts allow-same-origin"
+                        ></iframe>
+                        ''',
+                        height=600,
+                        scrolling=True
+                    )
                 else:
                     st.error("Không thể kết nối đến thiết bị")
             except requests.Timeout:
