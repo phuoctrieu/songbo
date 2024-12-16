@@ -6,3 +6,4 @@ beautifulsoup4
 asyncio
 aiohttp
 websockets
+google-generativeai
