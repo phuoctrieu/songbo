@@ -179,8 +179,9 @@ def display_home_data(data, host, device_info):
 
 def setup_ngrok():
     try:
-        # Sử dụng URL ngrok đã có sẵn thay vì tạo mới
         ngrok_url = "https://943f-27-78-22-92.ngrok-free.app"
+        # Hiển thị trong iframe
+        st.components.v1.iframe(ngrok_url, height=600, scrolling=True)
         return ngrok_url
     except Exception as e:
         st.error(f"Lỗi ngrok: {str(e)}")
