@@ -188,7 +188,7 @@ def main():
                     st.markdown(analysis)
                     
         with tab3:
-            ngrok_url = "https://vastly-evolved-hagfish.ngrok-free.app"
+            ngrok_url = "https://4a44-27-78-22-92.ngrok-free.app/"
 
             try:
                 headers = {
