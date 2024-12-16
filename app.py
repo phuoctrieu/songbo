@@ -193,8 +193,12 @@ def main():
 
             try:
                 # Kiểm tra kết nối
+                headers = {
+                    'ngrok-skip-browser-warning': 'true',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                }
                 response = requests.get(ngrok_url, 
-                                      headers={'ngrok-skip-browser-warning': 'true'},
+                                      headers=headers,
                                       timeout=10)
                 if response.status_code == 200:
                     # Nhúng iframe với URL ngrok
