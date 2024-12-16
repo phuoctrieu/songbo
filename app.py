@@ -194,15 +194,26 @@ def main():
             # Tạo container để hiển thị iframe với custom HTML
             container = st.container()
             with container:
-                html_code = f"""
-                <iframe 
-                    src="https://943f-27-78-22-92.ngrok-free.app" 
-                    height="600" 
-                    width="100%"
-                    style="border: none;"
-                    sandbox="allow-same-origin allow-scripts"
-                    onload="this.contentWindow.postMessage({{headers: {{'ngrok-skip-browser-warning': 'true'}}}}, '*')"
-                ></iframe>
+                html_code = """
+                <div id="iframe-container"></div>
+                <script>
+                    fetch('https://943f-27-78-22-92.ngrok-free.app', {
+                        headers: {
+                            'ngrok-skip-browser-warning': 'true'
+                        }
+                    })
+                    .then(response => response.text())
+                    .then(data => {
+                        document.getElementById('iframe-container').innerHTML = `
+                            <iframe 
+                                srcdoc="${data}"
+                                height="600" 
+                                width="100%"
+                                style="border: none;"
+                            ></iframe>
+                        `;
+                    });
+                </script>
                 """
                 st.components.v1.html(html_code, height=600)
 
