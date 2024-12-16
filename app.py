@@ -189,14 +189,22 @@ def main():
         with tab3:
             st.subheader("Thiết bị giám sát")
             
-            # Tạo container để hiển thị iframe
+        
+            
+            # Tạo container để hiển thị iframe với custom HTML
             container = st.container()
             with container:
-                st.components.v1.iframe(
-                    src="https://943f-27-78-22-92.ngrok-free.app",
-                    height=600,
-                    scrolling=True
-                )
+                html_code = f"""
+                <iframe 
+                    src="https://943f-27-78-22-92.ngrok-free.app" 
+                    height="600" 
+                    width="100%"
+                    style="border: none;"
+                    sandbox="allow-same-origin allow-scripts"
+                    onload="this.contentWindow.postMessage({{headers: {{'ngrok-skip-browser-warning': 'true'}}}}, '*')"
+                ></iframe>
+                """
+                st.components.v1.html(html_code, height=600)
 
     except Exception as e:
         st.error(f"Có lỗi xảy ra: {str(e)}")
