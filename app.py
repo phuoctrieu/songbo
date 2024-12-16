@@ -202,7 +202,17 @@ def main():
                                       timeout=10)
                 if response.status_code == 200:
                     # Nhúng iframe với URL ngrok
-                    components.iframe(f"{ngrok_url}?ngrok-skip-browser-warning=true", height=800, scrolling=True)
+                    st.markdown(f'''
+                        <iframe 
+                            src="{ngrok_url}?ngrok-skip-browser-warning=true"
+                            width="100%" 
+                            height="800" 
+                            frameborder="0"
+                            allow="autoplay; fullscreen; picture-in-picture"
+                            allowfullscreen
+                            sandbox="allow-forms allow-scripts allow-same-origin"
+                        ></iframe>
+                    ''', unsafe_allow_html=True)
                 else:
                     st.error("Không thể kết nối đến thiết bị")
             except requests.Timeout:
