@@ -5,6 +5,7 @@ import pandas as pd
 from datetime import datetime
 import os
 import google.generativeai as genai
+import streamlit.components.v1 as components
 
 # Cấu hình API keys
 OPENWEATHER_API_KEY = "54f2addc6568b792dfd3c21aefb08794"
@@ -189,27 +190,11 @@ def main():
         with tab3:
             container = st.container()
             with container:
-                # Tạo iframe với headers thông qua HTML component
-                iframe_html = f"""
-                <iframe 
-                    src="https://943f-27-78-22-92.ngrok-free.app"
-                    width="100%" 
-                    height="800px" 
-                    frameborder="0"
-                    style="border: none;"
-                ></iframe>
-                <script>
-                    // Thêm headers vào request
-                    fetch('https://943f-27-78-22-92.ngrok-free.app', {{
-                        headers: {{
-                            'ngrok-skip-browser-warning': 'true'
-                        }}
-                    }});
-                </script>
-                """
-                st.components.v1.html(
-                    iframe_html,
+                # Sử dụng components.iframe trực tiếp
+                components.iframe(
+                    src="https://943f-27-78-22-92.ngrok-free.app",
                     height=800,
+                    scrolling=True
                 )
 
     except Exception as e:
