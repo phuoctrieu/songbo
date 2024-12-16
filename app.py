@@ -189,18 +189,14 @@ def main():
         with tab3:
             container = st.container()
             with container:
-                # Tạo iframe HTML để hiển thị trang web với custom headers
+                # Tạo iframe với headers thông qua HTML component
                 iframe_html = f"""
                 <iframe 
                     src="https://943f-27-78-22-92.ngrok-free.app"
                     width="100%" 
                     height="800px" 
                     frameborder="0"
-                    style="border: none; width: 100%; height: 800px;"
-                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-                    onload="this.contentWindow.postMessage({{
-                        headers: {{'ngrok-skip-browser-warning': 'true'}}
-                    }}, '*')"
+                    style="border: none;"
                 ></iframe>
                 <script>
                     // Thêm headers vào request
@@ -208,14 +204,13 @@ def main():
                         headers: {{
                             'ngrok-skip-browser-warning': 'true'
                         }}
-                    }}).then(response => response.text())
-                    .then(data => {{
-                        document.querySelector('iframe').srcdoc = data;
                     }});
                 </script>
                 """
-                # Hiển thị iframe
-                st.components.v1.html(iframe_html, height=800)
+                st.components.v1.html(
+                    iframe_html,
+                    height=800,
+                )
 
     except Exception as e:
         st.error(f"Có lỗi xảy ra: {str(e)}")
