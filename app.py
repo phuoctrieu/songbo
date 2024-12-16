@@ -1,195 +1,221 @@
 import streamlit as st
-import asyncio
-import websockets
-import json
-from datetime import datetime
+import io
 import pandas as pd
-import threading
 import requests
+from datetime import datetime
 from requests.auth import HTTPBasicAuth
+import re
 from bs4 import BeautifulSoup
-import logging
+import time
 
-# Cấu hình logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+def connect_webiopi(host, username, password):
+    try:
+        url = f"http://{host}"
+        response = requests.get(url, auth=HTTPBasicAuth(username, password))
+        if response.status_code == 200:
+            return True
+        else:
+            st.error(f"Lỗi xác thực: {response.status_code}")
+            return False
+    except Exception as e:
+        st.error(f"Lỗi kết nối server: {str(e)}")
+        return False
 
-# Class thu thập dữ liệu từ thiết bị
-class DeviceDataCollector:
-    def __init__(self, device_ip="192.168.200.211:8880", username="ecapro", password="123456"):
-        self.device_ip = device_ip
-        self.username = username
-        self.password = password
+def parse_network_settings(html_content):
+    soup = BeautifulSoup(html_content, 'html.parser')
+    settings = {}
+    
+    # Parse input fields
+    input_fields = soup.find_all('input')
+    for field in input_fields:
+        field_id = field.get('id')
+        if field_id:
+            settings[field_id] = {
+                'value': field.get('value', ''),
+                'type': field.get('type', ''),
+                'disabled': field.get('disabled') is not None
+            }
+    
+    # Organize settings by category
+    categories = {
+        'network': ['mac', 'hostname', 'dhcp', 'vina3g', 'ip', 'gateway', 'mask', 'dns1', 'dns2'],
+        'email': ['mailserver', 'mailport', 'mailfrom', 'mailpass', 'mailto0', 'mailto1', 'mailto2'],
+        'ftp1': ['serverftp', 'filenameftp', 'pathftp', 'userftp', 'passftp'],
+        'ftp2': ['serverftp2', 'pathftp2', 'userftp2', 'passftp2'],
+        'sms': ['tel0', 'tel1', 'tel2', 'tel3', 'tel4'],
+        'admin': ['username', 'newpass', 'conpass']
+    }
+    
+    organized_settings = {}
+    for category, fields in categories.items():
+        organized_settings[category] = {
+            field: settings.get(field, {}) for field in fields
+        }
+    
+    return organized_settings
 
-    def get_device_data(self):
-        try:
-            url = f"http://{self.device_ip}/index.htm"
-            response = requests.get(
-                url, 
-                auth=HTTPBasicAuth(self.username, self.password),
-                timeout=5
-            )
+def parse_home_data(html_content):
+    soup = BeautifulSoup(html_content, 'html.parser')
+    data = {}
+    
+    # Parse các thông tin từ trang Home
+    try:
+        # Tìm tất cả các table
+        tables = soup.find_all('table')
+        
+        # Parse thông tin thiết bị
+        device_info = {}
+        if len(tables) > 0:
+            rows = tables[0].find_all('tr')
+            for row in rows:
+                cols = row.find_all(['td', 'th'])
+                if len(cols) >= 2:
+                    label = cols[0].get_text(strip=True)
+                    value = cols[1].get_text(strip=True)
+                    device_info[label] = value
+        data['device_info'] = device_info
+        
+        # Parse thông tin đo đạc
+        measurements = {}
+        if len(tables) > 1:
+            rows = tables[1].find_all('tr')
+            for row in rows:
+                cols = row.find_all(['td', 'th'])
+                if len(cols) >= 2:
+                    label = cols[0].get_text(strip=True)
+                    value = cols[1].get_text(strip=True)
+                    measurements[label] = value
+        data['measurements'] = measurements
+        
+    except Exception as e:
+        st.error(f"Lỗi parse dữ liệu Home: {str(e)}")
+    
+    return data
+
+def get_device_info(host, username, password):
+    try:
+        endpoints = {
+            "Home": "/index.htm",  # Thêm endpoint Home
+            "Network": "/networksetting.html",
+            "Modbus": "/modbussetting.htm",
+            "Calibration": "/calibrationsetting.htm",
+            "Functions": "/functionssetting.htm", 
+            "ModbusTCP": "/modbustcp.htm",
+            "IO": "/iosetting.htm"
+        }
+        
+        device_data = {}
+        
+        for name, endpoint in endpoints.items():
+            url = f"http://{host}{endpoint}"
+            response = requests.get(url, auth=HTTPBasicAuth(username, password))
             
             if response.status_code == 200:
-                soup = BeautifulSoup(response.text, 'html.parser')
-                tables = soup.find_all('table')
-                
-                device_info = {}
-                measurements = {}
-                
-                # Parse thông tin thiết bị
-                if len(tables) > 0:
-                    for row in tables[0].find_all('tr'):
-                        cols = row.find_all(['td', 'th'])
-                        if len(cols) >= 2:
-                            key = cols[0].get_text(strip=True)
-                            value = cols[1].get_text(strip=True)
-                            device_info[key] = value
-                
-                # Parse dữ liệu đo
-                if len(tables) > 1:
-                    for row in tables[1].find_all('tr'):
-                        cols = row.find_all(['td', 'th'])
-                        if len(cols) >= 2:
-                            key = cols[0].get_text(strip=True)
-                            value = cols[1].get_text(strip=True)
-                            measurements[key] = value
-                
-                return {
-                    'device_info': device_info,
-                    'measurements': measurements
+                device_data[name] = {
+                    'content': response.text,
+                    'endpoint': endpoint
                 }
-            return None
-        except Exception as e:
-            logger.error(f"Error collecting data: {str(e)}")
-            return None
-
-# WebSocket Server
-async def handle_client(websocket, path):
-    collector = DeviceDataCollector()
-    
-    try:
-        auth = await websocket.recv()
-        auth_data = json.loads(auth)
+                
+                if name == "Network":
+                    device_data[name]['settings'] = parse_network_settings(response.text)
+                elif name == "Home":
+                    device_data[name]['data'] = parse_home_data(response.text)
+                
+        return device_data
         
-        if auth_data['username'] == 'ecapro' and auth_data['password'] == '123456':
-            logger.info("Client authenticated successfully")
-            
-            while True:
-                data = collector.get_device_data()
-                
-                if data:
-                    await websocket.send(json.dumps(data))
-                else:
-                    dummy_data = {
-                        'device_info': {
-                            'name': 'Device 1',
-                            'status': 'Online'
-                        },
-                        'measurements': {
-                            'temperature': '25.6',
-                            'humidity': '65%'
-                        }
-                    }
-                    await websocket.send(json.dumps(dummy_data))
-                
-                await asyncio.sleep(1)
-                
-    except websockets.exceptions.ConnectionClosed:
-        logger.info("Client disconnected")
     except Exception as e:
-        logger.error(f"Error in handle_client: {str(e)}")
-
-async def start_websocket_server():
-    server = await websockets.serve(
-        handle_client, 
-        "0.0.0.0",
-        8880,
-        ping_interval=None
-    )
-    logger.info("WebSocket server started on ws://0.0.0.0:8880")
-    await server.wait_closed()
-
-# Streamlit Client
-async def connect_websocket(uri):
-    try:
-        async with websockets.connect(uri) as websocket:
-            auth_message = {
-                "username": "ecapro",
-                "password": "123456"
-            }
-            await websocket.send(json.dumps(auth_message))
-            data = await websocket.recv()
-            return json.loads(data)
-            
-    except Exception as e:
-        st.error(f"Lỗi kết nối WebSocket: {str(e)}")
+        st.error(f"Lỗi lấy thông tin thiết bị: {str(e)}")
         return None
 
-def update_data():
-    if 'data' not in st.session_state:
-        st.session_state.data = None
+def display_network_settings(settings):
+    # Network Settings
+    st.subheader("Network Settings")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.info(f"MAC Address: {settings['network']['mac']['value']}")
+        st.text_input("Hostname", value=settings['network']['hostname']['value'])
+        st.checkbox("DHCP", value=settings['network']['dhcp'].get('value')=='1')
+    with col2:
+        st.text_input("IP Address", value=settings['network']['ip']['value'])
+        st.text_input("Gateway", value=settings['network']['gateway']['value'])
+        st.text_input("Subnet Mask", value=settings['network']['mask']['value'])
     
-    uri = "ws://localhost:8880"
-    new_data = asyncio.run(connect_websocket(uri))
+    # Email Settings
+    st.subheader("Email Settings")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.text_input("SMTP Server", value=settings['email']['mailserver']['value'])
+        st.text_input("From", value=settings['email']['mailfrom']['value'])
+    with col2:
+        st.text_input("Port", value=settings['email']['mailport']['value'])
+        st.text_input("To", value=settings['email']['mailto0']['value'])
     
-    if new_data:
-        st.session_state.data = new_data
+    # FTP Settings
+    st.subheader("FTP Settings")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.text_input("FTP1 Server", value=settings['ftp1']['serverftp']['value'])
+        st.text_input("FTP1 User", value=settings['ftp1']['userftp']['value'])
+    with col2:
+        st.text_input("FTP2 Server", value=settings['ftp2']['serverftp2']['value'])
+        st.text_input("FTP2 User", value=settings['ftp2']['userftp2']['value'])
+    
+    # SMS Settings
+    st.subheader("SMS Settings")
+    for i in range(5):
+        st.text_input(f"Phone {i+1}", value=settings['sms'][f'tel{i}']['value'])
 
-def display_data(data):
+def display_home_data(data, host, device_info):
     if not data:
         st.warning("Không có dữ liệu")
         return
     
-    # Hiển thị thông tin thiết bị
-    st.subheader("Thông tin thiết bị")
-    if 'device_info' in data:
-        for key, value in data['device_info'].items():
-            st.text(f"{key}: {value}")
+    url = f"http://{host}{device_info['Home']['endpoint']}"
+    #st.markdown(f"[Mở trang Home trong tab mới]({url})")  # Giữ lại link để mở trong tab mới
     
-    # Hiển thị dữ liệu đo
-    st.subheader("Dữ liệu đo")
-    if 'measurements' in data:
-        df = pd.DataFrame(data['measurements'].items(), columns=['Metric', 'Value'])
-        st.dataframe(df)
-        
-        # Vẽ biểu đồ
-        numeric_data = {}
-        for key, value in data['measurements'].items():
-            try:
-                numeric_data[key] = float(value.replace('%', ''))
-            except:
-                continue
-        if numeric_data:
-            st.line_chart(numeric_data)
+    # Tạo HTML iframe
+    iframe_html = f'<iframe src="{url}" width="100%" height="600" frameborder="0"></iframe>'
+    st.components.v1.html(iframe_html, height=600, scrolling=True)
 
-def run_streamlit():
+def setup_ngrok():
+    try:
+        # Sử dụng URL ngrok đã có sẵn thay vì tạo mới
+        ngrok_url = "https://943f-27-78-22-92.ngrok-free.app"
+        return ngrok_url
+    except Exception as e:
+        st.error(f"Lỗi ngrok: {str(e)}")
+        return None
+
+def main():
     st.title("THÔNG TIN VẬN HÀNH THỦY VĂN NHÀ MÁY")
     
-    if st.button("Refresh"):
-        update_data()
+    # Thông tin đăng nhập mặc định
+    local_host = "192.168.200.211:8880"
+    username = "ecapro"
+    password = "123456"
     
-    if 'last_refresh' not in st.session_state:
-        st.session_state.last_refresh = datetime.now()
-    
-    current_time = datetime.now()
-    if (current_time - st.session_state.last_refresh).seconds >= 5:
-        update_data()
-        st.session_state.last_refresh = current_time
-    
-    if hasattr(st.session_state, 'data') and st.session_state.data:
-        display_data(st.session_state.data)
+    # Khởi tạo ngrok tunnel
+    ngrok_url = setup_ngrok()
+    if ngrok_url:
+        host = ngrok_url.replace("http://", "")
+        st.info(f"Ngrok URL: {ngrok_url}")
     else:
-        st.warning("Đang kết nối...")
-
-def run_websocket():
-    asyncio.run(start_websocket_server())
+        host = local_host
+    
+    # Kết nối qua ngrok hoặc local
+    if connect_webiopi(host, username, password):
+        st.success("Kết nối thành công!")
+        
+        device_info = get_device_info(host, username, password)
+        
+        if device_info:
+            if 'Home' in device_info:
+                display_home_data(device_info['Home']['data'], host, device_info)
+            else:
+                st.warning("Không thể lấy thông tin Home")
+    else:
+        st.error("Không thể kết nối đến server")
 
 if __name__ == "__main__":
-    # Khởi động WebSocket server trong thread riêng
-    websocket_thread = threading.Thread(target=run_websocket)
-    websocket_thread.daemon = True  # Thread sẽ tự động kết thúc khi chương trình chính kết thúc
-    websocket_thread.start()
-    
-    # Chạy Streamlit app trong main thread
-    run_streamlit()
+    main()
+
