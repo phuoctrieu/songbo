@@ -188,22 +188,20 @@ def main():
                     st.markdown(analysis)
                     
         with tab3:
-            container = st.container()
-            with container:
-                # Sử dụng HTML iframe với custom headers
-                html_content = f"""
-                    <iframe 
-                        src="https://943f-27-78-22-92.ngrok-free.app"
-                        height="800"
-                        width="100%"
-                        scrolling="true"
-                        frameborder="0"
-                        style="border: none;"
-                        sandbox="allow-same-origin allow-scripts allow-forms"
-                        headers="{{'ngrok-skip-browser-warning': 'true'}}"
-                    ></iframe>
-                """
-                components.html(html_content, height=800)
+            try:
+                # Kiểm tra kết nối
+                response = requests.get('https://943f-27-78-22-92.ngrok-free.app', 
+                                      headers={'ngrok-skip-browser-warning': 'true'},
+                                      timeout=10)
+                if response.status_code == 200:
+                    st.markdown(f'<iframe src="https://943f-27-78-22-92.ngrok-free.app" width="100%" height="800" frameborder="0"></iframe>', 
+                               unsafe_allow_html=True)
+                else:
+                    st.error("Không thể kết nối đến thiết bị")
+            except requests.Timeout:
+                st.error("Kết nối bị timeout")
+            except Exception as e:
+                st.error(f"Lỗi kết nối: {str(e)}")
 
     except Exception as e:
         st.error(f"Có lỗi xảy ra: {str(e)}")
