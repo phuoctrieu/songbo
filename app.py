@@ -178,14 +178,10 @@ def display_home_data(data, host, device_info):
     st.components.v1.html(iframe_html, height=600, scrolling=True)
 
 def setup_ngrok():
-    try:
-        ngrok_url = "https://943f-27-78-22-92.ngrok-free.app"
-        # Hiển thị trong iframe
-        st.components.v1.iframe(ngrok_url, height=600, scrolling=True)
-        return ngrok_url
-    except Exception as e:
-        st.error(f"Lỗi ngrok: {str(e)}")
-        return None
+    ngrok_url = "https://943f-27-78-22-92.ngrok-free.app"
+    # Hiển thị trong iframe
+    st.components.v1.iframe(ngrok_url, height=600, scrolling=True)
+    return ngrok_url
 
 def main():
     st.title("THÔNG TIN VẬN HÀNH THỦY VĂN NHÀ MÁY")
@@ -199,7 +195,7 @@ def main():
     ngrok_url = setup_ngrok()
     if ngrok_url:
         host = ngrok_url.replace("http://", "")
-        st.info(f"Ngrok URL: {ngrok_url}")
+        #st.info(f"Ngrok URL: {ngrok_url}")
     else:
         host = local_host
     
