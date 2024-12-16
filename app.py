@@ -187,35 +187,35 @@ def main():
                     st.markdown(analysis)
                     
         with tab3:
-            st.subheader("Thiết bị giám sát")
-            
-        
-            
-            # Tạo container để hiển thị iframe với custom HTML
             container = st.container()
             with container:
-                html_code = """
-                <div id="iframe-container"></div>
+                # Tạo iframe HTML để hiển thị trang web với custom headers
+                iframe_html = f"""
+                <iframe 
+                    src="https://943f-27-78-22-92.ngrok-free.app"
+                    width="100%" 
+                    height="800px" 
+                    frameborder="0"
+                    style="border: none; width: 100%; height: 800px;"
+                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                    onload="this.contentWindow.postMessage({{
+                        headers: {{'ngrok-skip-browser-warning': 'true'}}
+                    }}, '*')"
+                ></iframe>
                 <script>
-                    fetch('https://943f-27-78-22-92.ngrok-free.app', {
-                        headers: {
+                    // Thêm headers vào request
+                    fetch('https://943f-27-78-22-92.ngrok-free.app', {{
+                        headers: {{
                             'ngrok-skip-browser-warning': 'true'
-                        }
-                    })
-                    .then(response => response.text())
-                    .then(data => {
-                        document.getElementById('iframe-container').innerHTML = `
-                            <iframe 
-                                srcdoc="${data}"
-                                height="600" 
-                                width="100%"
-                                style="border: none;"
-                            ></iframe>
-                        `;
-                    });
+                        }}
+                    }}).then(response => response.text())
+                    .then(data => {{
+                        document.querySelector('iframe').srcdoc = data;
+                    }});
                 </script>
                 """
-                st.components.v1.html(html_code, height=600)
+                # Hiển thị iframe
+                st.components.v1.html(iframe_html, height=800)
 
     except Exception as e:
         st.error(f"Có lỗi xảy ra: {str(e)}")
