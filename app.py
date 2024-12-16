@@ -188,35 +188,18 @@ def main():
                     st.markdown(analysis)
                     
         with tab3:
-            ngrok_url = "https://4a44-27-78-22-92.ngrok-free.app/"
+            # URL của thiết bị giám sát, cần được cập nhật mỗi khi ngrok restart
+            ngrok_url = "https://4a44-27-78-22-92.ngrok-free.app"  # Thay thế bằng URL ngrok hiện tại của bạn
 
             try:
-                headers = {
-                    'ngrok-skip-browser-warning': 'true',
-                    'User-Agent': 'Mozilla/5.0',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                    'Accept-Language': 'en-US,en;q=0.5',
-                    'Connection': 'keep-alive',
-                    'Upgrade-Insecure-Requests': '1',
-                }
-                
-                response = requests.get(ngrok_url, headers=headers, timeout=10)
-                
+                # Kiểm tra kết nối
+                response = requests.get(ngrok_url, 
+                                      headers={'ngrok-skip-browser-warning': 'true'},
+                                      timeout=10)
                 if response.status_code == 200:
-                    components.html(
-                        f'''
-                        <iframe 
-                            src="{ngrok_url}?ngrok-skip-browser-warning=true"
-                            width="100%"
-                            style="border: none;"
-                            allow="autoplay; fullscreen; picture-in-picture"
-                            allowfullscreen
-                            sandbox="allow-forms allow-scripts allow-same-origin"
-                        ></iframe>
-                        ''',
-                        height=600,
-                        scrolling=True
-                    )
+                    # Nhúng iframe với URL ngrok
+                    st.markdown(f'<iframe src="{ngrok_url}" width="100%" height="800" frameborder="0"></iframe>', 
+                               unsafe_allow_html=True)
                 else:
                     st.error("Không thể kết nối đến thiết bị")
             except requests.Timeout:
