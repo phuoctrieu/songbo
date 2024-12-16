@@ -190,12 +190,20 @@ def main():
         with tab3:
             container = st.container()
             with container:
-                # Sử dụng components.iframe trực tiếp
-                components.iframe(
-                    src="https://943f-27-78-22-92.ngrok-free.app",
-                    height=800,
-                    scrolling=True
-                )
+                # Sử dụng HTML iframe với custom headers
+                html_content = f"""
+                    <iframe 
+                        src="https://943f-27-78-22-92.ngrok-free.app"
+                        height="800"
+                        width="100%"
+                        scrolling="true"
+                        frameborder="0"
+                        style="border: none;"
+                        sandbox="allow-same-origin allow-scripts allow-forms"
+                        headers="{{'ngrok-skip-browser-warning': 'true'}}"
+                    ></iframe>
+                """
+                components.html(html_content, height=800)
 
     except Exception as e:
         st.error(f"Có lỗi xảy ra: {str(e)}")
