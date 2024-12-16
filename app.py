@@ -7,6 +7,19 @@ from requests.auth import HTTPBasicAuth
 import re
 from bs4 import BeautifulSoup
 import time
+import asyncio
+import aiohttp
+from streamlit.runtime.scriptrunner import add_script_run_ctx
+
+endpoints = {
+    "Home": "/index.htm",
+    "Network": "/networksetting.html",
+    "Modbus": "/modbussetting.htm",
+    "Calibration": "/calibrationsetting.htm",
+    "Functions": "/functionssetting.htm", 
+    "ModbusTCP": "/modbustcp.htm",
+    "IO": "/iosetting.htm"
+}
 
 def connect_webiopi(host, username, password):
     try:
@@ -92,40 +105,31 @@ def parse_home_data(html_content):
     
     return data
 
-def get_device_info(host, username, password):
+async def fetch_data(session, url, auth):
     try:
-        endpoints = {
-            "Home": "/index.htm",  # Thêm endpoint Home
-            "Network": "/networksetting.html",
-            "Modbus": "/modbussetting.htm",
-            "Calibration": "/calibrationsetting.htm",
-            "Functions": "/functionssetting.htm", 
-            "ModbusTCP": "/modbustcp.htm",
-            "IO": "/iosetting.htm"
-        }
-        
-        device_data = {}
-        
+        async with session.get(url, auth=auth) as response:
+            return await response.text()
+    except Exception as e:
+        st.error(f"Error fetching {url}: {str(e)}")
+        return None
+
+async def get_device_info_async(host, username, password):
+    auth = aiohttp.BasicAuth(username, password)
+    async with aiohttp.ClientSession() as session:
+        tasks = []
         for name, endpoint in endpoints.items():
             url = f"http://{host}{endpoint}"
-            response = requests.get(url, auth=HTTPBasicAuth(username, password))
-            
-            if response.status_code == 200:
-                device_data[name] = {
-                    'content': response.text,
-                    'endpoint': endpoint
-                }
-                
-                if name == "Network":
-                    device_data[name]['settings'] = parse_network_settings(response.text)
-                elif name == "Home":
-                    device_data[name]['data'] = parse_home_data(response.text)
-                
-        return device_data
+            tasks.append(fetch_data(session, url, auth))
         
-    except Exception as e:
-        st.error(f"Lỗi lấy thông tin thiết bị: {str(e)}")
-        return None
+        results = await asyncio.gather(*tasks)
+        # Process results...
+        return results
+
+@st.cache_data(ttl=300)
+def get_cached_device_info(host, username, password):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    return loop.run_until_complete(get_device_info_async(host, username, password))
 
 def display_network_settings(settings):
     # Network Settings
@@ -189,7 +193,7 @@ def main():
     if connect_webiopi(host, username, password):
         st.success("Kết nối thành công!")
         
-        device_info = get_device_info(host, username, password)
+        device_info = get_cached_device_info(host, username, password)
         
         if device_info:
             if 'Home' in device_info:
