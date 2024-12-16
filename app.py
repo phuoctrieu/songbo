@@ -178,7 +178,7 @@ def display_home_data(data, host, device_info):
     st.components.v1.html(iframe_html, height=600, scrolling=True)
 
 def main():
-    st.title("WebIOPi Device Manager")
+    st.title("THÔNG TIN VẬN HÀNH THỦY VĂN NHÀ MÁY")
     
     # Thông tin đăng nhập mặc định
     host = "192.168.200.211:8880"
